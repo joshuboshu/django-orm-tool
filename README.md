@@ -8,25 +8,33 @@ Panel web para ejecutar código ORM de Django directamente desde el browser. Sin
 
 ## Uso en tu proyecto (clonar dentro del proyecto)
 
-### 1. Copiar la app
+### 1. Copiar la carpeta `orm_tool`
 
-Clona este repositorio dentro de la carpeta raíz de tu proyecto Django y quédate solo con la carpeta `orm_tool/`:
-
-```bash
-# Dentro de la raíz de tu proyecto Django
-git clone https://github.com/tu-usuario/django-orm-tool.git _tmp_orm
-cp -r _tmp_orm/orm_tool ./orm_tool
-rm -rf _tmp_orm
-```
-
-O si prefieres clonar el repo completo y usarlo directamente:
+Clona el repo y copia **solo la carpeta `orm_tool`** a la raíz de tu proyecto Django (donde está tu `manage.py`):
 
 ```bash
-# Dentro de la raíz de tu proyecto Django
+# Desde la raíz de tu proyecto Django
 git clone https://github.com/tu-usuario/django-orm-tool.git
+cp -r django-orm-tool/orm_tool ./orm_tool
 ```
 
-En ese caso ajusta el paso 2 para apuntar a `django-orm-tool/orm_tool`.
+La estructura debe quedar así:
+
+```
+tu-proyecto/
+├── manage.py
+├── orm_tool/          ← carpeta copiada aquí
+│   ├── __init__.py
+│   ├── executor.py
+│   ├── views.py
+│   └── ...
+├── tu_app/
+└── ...
+```
+
+> **Error común:** si dejas `orm_tool` dentro de `django-orm-tool/orm_tool/` sin copiarla,
+> Django lanzará `ModuleNotFoundError: No module named 'orm_tool'`.
+> La carpeta debe quedar al mismo nivel que `manage.py`.
 
 ### 2. Agregar a `INSTALLED_APPS`
 
@@ -35,23 +43,6 @@ En tu `settings.py`:
 ```python
 INSTALLED_APPS = [
     # ... tus apps existentes ...
-    'orm_tool',
-]
-```
-
-Si clonaste el repo completo (no solo la carpeta), necesitas que Python encuentre la app. La forma más simple es agregar el path al principio de `settings.py`:
-
-```python
-import sys
-from pathlib import Path
-
-BASE_DIR = Path(__file__).resolve().parent.parent
-
-# Si clonaste el repo como subcarpeta:
-sys.path.insert(0, str(BASE_DIR / 'django-orm-tool'))
-
-INSTALLED_APPS = [
-    # ...
     'orm_tool',
 ]
 ```
