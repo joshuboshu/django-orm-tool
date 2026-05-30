@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Django ORM Tool</title>
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <!-- CodeMirror -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css" rel="stylesheet">
+  <!-- DataTables -->
+  <link href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+
+  <style>
+    :root {
+      --sidebar-w: 260px;
+      --header-h: 54px;
+      --bg: #1a1d21;
+      --surface: #22262c;
+      --border: #2e333b;
+      --accent: #7c6af5;
+      --accent-hover: #6959e0;
+      --text: #e1e4e8;
+      --text-muted: #8b949e;
+      --success: #3fb950;
+      --danger: #f85149;
+      --warning: #d29922;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      height: 100vh;
+      overflow: hidden;
+      margin: 0;
+    }
+
+    /* HEADER */
+    .top-bar {
+      height: var(--header-h);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 1rem;
+      gap: 0.75rem;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+    }
+    .top-bar .logo {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      text-decoration: none;
+    }
+    .top-bar .logo span { color: var(--text); font-weight: 400; }
+    .badge-debug {
+      background: #2d4a1e;
+      color: var(--success);
+      font-size: 0.7rem;
+      padding: 2px 7px;
+      border-radius: 10px;
+      border: 1px solid #3fb95044;
+    }
+    .run-btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 6px 16px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s;
+    }
+    .run-btn:hover { background: var(--accent-hover); }
+    .run-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+    .kbd { background: #ffffff18; border-radius: 4px; padding: 1px 5px; font-size: 0.72rem; font-family: monospace; }
+
+    /* LAYOUT */
+    .app-body {
+      display: flex;
+      height: calc(100vh - var(--header-h));
+      margin-top: var(--header-h);
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+      width: var(--sidebar-w);
+      min-width: var(--sidebar-w);
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .sidebar-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-tab {
+      flex: 1;
+      padding: 8px 4px;
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    .sidebar-tab.active {
+      color: var(--accent);
+      border-bottom-color: var(--accent);
+    }
+    .sidebar-search {
+      padding: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sidebar-search input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      color: var(--text);
+      padding: 5px 8px;
+      font-size: 0.78rem;
+    }
+    .sidebar-search input:focus { outline: none; border-color: var(--accent); }
+    .sidebar-content { flex: 1; overflow-y: auto; padding: 4px 0; }
+
+    .model-item { border-bottom: 1px solid var(--border)10; }
+    .model-header {
+      display: flex;
+      align-items: center;
+      padding: 6px 10px;
+      cursor: pointer;
+      gap: 6px;
+      transition: background 0.1s;
+    }
+    .model-header:hover { background: #ffffff08; }
+    .model-header .icon { color: var(--accent); font-size: 0.8rem; transition: transform 0.15s; }
+    .model-header.open .icon { transform: rotate(90deg); }
+    .model-name { font-size: 0.82rem; font-weight: 600; flex: 1; }
+    .model-app-badge {
+      font-size: 0.64rem;
+      background: #ffffff0d;
+      border-radius: 3px;
+      padding: 1px 4px;
+      color: var(--text-muted);
+    }
+    .snippet-btn {
+      background: none; border: none; color: var(--text-muted);
+      padding: 0 4px; cursor: pointer; font-size: 0.75rem;
+      opacity: 0;
+      transition: opacity 0.1s;
+    }
+    .model-header:hover .snippet-btn { opacity: 1; }
+
+    .model-fields { display: none; }
+    .model-fields.open { display: block; }
+    .field-row {
+      display: flex;
+      align-items: center;
+      padding: 3px 10px 3px 24px;
+      gap: 6px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .field-type {
+      font-size: 0.65rem;
+      background: #ffffff0a;
+      border-radius: 3px;
+      padding: 1px 4px;
+      color: #6e82a6;
+      margin-left: auto;
+    }
+
+    /* History */
+    .history-item {
+      padding: 6px 10px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border)20;
+      transition: background 0.1s;
+    }
+    .history-item:hover { background: #ffffff08; }
+    .history-code {
+      font-size: 0.73rem;
+      font-family: monospace;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .history-time { font-size: 0.65rem; color: #6e82a6; }
+
+    /* MAIN AREA */
+    .main-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* EDITOR */
+    .editor-pane {
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+    .editor-toolbar {
+      display: flex;
+      align-items: center;
+      padding: 4px 10px;
+      gap: 8px;
+      background: #1c2028;
+      border-bottom: 1px solid var(--border);
+    }
+    .editor-toolbar span { font-size: 0.72rem; color: var(--text-muted); }
+    .btn-clear {
+      background: none; border: 1px solid var(--border);
+      color: var(--text-muted); border-radius: 4px;
+      padding: 2px 8px; font-size: 0.72rem; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-clear:hover { border-color: var(--danger); color: var(--danger); }
+
+    .CodeMirror {
+      height: 220px;
+      font-size: 13.5px;
+      font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+      line-height: 1.6;
+    }
+
+    /* RESULTS */
+    .results-pane {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .results-toolbar {
+      display: flex;
+      align-items: center;
+      padding: 6px 12px;
+      gap: 10px;
+      background: #1c2028;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.78rem;
+    }
+    .status-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--text-muted);
+    }
+    .status-dot.success { background: var(--success); }
+    .status-dot.error { background: var(--danger); }
+    .status-dot.loading {
+      background: var(--accent);
+      animation: pulse 1s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+    .tab-switcher { display: flex; gap: 4px; margin-left: auto; }
+    .tab-btn {
+      background: none; border: 1px solid var(--border);
+      color: var(--text-muted); border-radius: 4px;
+      padding: 3px 10px; font-size: 0.75rem; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .tab-btn.active {
+      background: var(--accent)22;
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .results-body { flex: 1; overflow: auto; padding: 12px; }
+
+    /* DataTable dark theme overrides */
+    .dataTables_wrapper { color: var(--text); font-size: 0.82rem; }
+    .dataTables_wrapper .dataTables_filter input,
+    .dataTables_wrapper .dataTables_length select {
+      background: var(--bg); border: 1px solid var(--border);
+      color: var(--text); border-radius: 4px; padding: 3px 6px;
+    }
+    .dataTables_wrapper .dataTables_info,
+    .dataTables_wrapper .dataTables_paginate { color: var(--text-muted); font-size: 0.75rem; }
+    table.dataTable { border-collapse: collapse !important; }
+    table.dataTable thead th {
+      background: #1c2028;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border) !important;
+      font-weight: 600;
+      font-size: 0.78rem;
+      white-space: nowrap;
+      padding: 8px 10px;
+    }
+    table.dataTable tbody tr { background: transparent !important; }
+    table.dataTable tbody tr:hover td { background: #ffffff06 !important; }
+    table.dataTable tbody td {
+      border-color: var(--border) !important;
+      padding: 6px 10px;
+      font-size: 0.8rem;
+      font-family: 'JetBrains Mono', 'Consolas', monospace;
+      color: var(--text);
+      white-space: nowrap;
+      max-width: 280px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    td.null-val { color: #6e82a6; font-style: italic; }
+    .dataTables_paginate .paginate_button {
+      color: var(--text-muted) !important;
+      border: none !important;
+      background: none !important;
+      border-radius: 4px !important;
+    }
+    .dataTables_paginate .paginate_button.current {
+      background: var(--accent)22 !important;
+      color: var(--accent) !important;
+    }
+    .dataTables_paginate .paginate_button:hover {
+      background: #ffffff10 !important;
+      color: var(--text) !important;
+    }
+
+    /* JSON view */
+    .json-view {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+      font-family: 'JetBrains Mono', 'Consolas', monospace;
+      font-size: 0.78rem;
+      line-height: 1.6;
+      overflow: auto;
+      white-space: pre;
+      color: var(--text);
+    }
+    .json-key { color: #79b8ff; }
+    .json-string { color: #9ecbff; }
+    .json-number { color: #f0a958; }
+    .json-bool { color: #7ee787; }
+    .json-null { color: #6e82a6; font-style: italic; }
+
+    /* SQL view */
+    .sql-view {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+      font-family: 'JetBrains Mono', 'Consolas', monospace;
+      font-size: 0.8rem;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      color: #d4c5f9;
+    }
+
+    /* Error view */
+    .error-view {
+      background: #2a1414;
+      border: 1px solid #f85149aa;
+      border-radius: 6px;
+      padding: 12px;
+      font-family: 'JetBrains Mono', 'Consolas', monospace;
+      font-size: 0.78rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      color: #ffa8a8;
+    }
+    .error-title { color: var(--danger); font-weight: 700; margin-bottom: 6px; }
+
+    /* Empty state */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--text-muted);
+      gap: 10px;
+    }
+    .empty-state i { font-size: 2.5rem; opacity: 0.3; }
+    .empty-state p { font-size: 0.85rem; opacity: 0.6; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #3a3f47; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #4a5059; }
+
+    .resizer {
+      height: 5px;
+      background: var(--border);
+      cursor: ns-resize;
+      flex-shrink: 0;
+      transition: background 0.15s;
+    }
+    .resizer:hover { background: var(--accent); }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="top-bar">
+  <a href="#" class="logo"><i class="bi bi-database-fill-gear"></i> Django <span>ORM Tool</span></a>
+  <span class="badge-debug"><i class="bi bi-bug-fill"></i> DEBUG</span>
+  <div style="flex:1"></div>
+  <button class="run-btn" id="runBtn" onclick="executeCode()">
+    <i class="bi bi-play-fill"></i> Ejecutar
+    <span class="kbd">Ctrl+↵</span>
+  </button>
+</div>
+
+<!-- BODY -->
+<div class="app-body">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-tabs">
+      <div class="sidebar-tab active" id="tabModels" onclick="switchSidebarTab('models')">
+        <i class="bi bi-grid-3x3-gap"></i> Modelos
+      </div>
+      <div class="sidebar-tab" id="tabHistory" onclick="switchSidebarTab('history')">
+        <i class="bi bi-clock-history"></i> Historial
+      </div>
+    </div>
+
+    <div id="panelModels">
+      <div class="sidebar-search">
+        <input type="text" id="modelSearch" placeholder="Buscar modelo..." oninput="filterModels(this.value)">
+      </div>
+      <div class="sidebar-content" id="modelList">
+        {% for model in models %}
+        <div class="model-item" data-model="{{ model.name|lower }}">
+          <div class="model-header" onclick="toggleModel(this)" data-model="{{ model.name }}">
+            <i class="bi bi-chevron-right icon"></i>
+            <span class="model-name">{{ model.name }}</span>
+            <span class="model-app-badge">{{ model.app }}</span>
+            <button class="snippet-btn" title="Insertar snippet" onclick="insertSnippet(event, '{{ model.name }}')">
+              <i class="bi bi-lightning-fill"></i>
+            </button>
+          </div>
+          <div class="model-fields">
+            {% for field in model.fields %}
+            <div class="field-row">
+              <i class="bi bi-dash" style="font-size:0.6rem;color:#6e82a6"></i>
+              <span>{{ field.name }}</span>
+              <span class="field-type">{{ field.type }}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div id="panelHistory" style="display:none;flex:1;overflow:hidden;display:flex;flex-direction:column">
+      <div class="sidebar-content" id="historyList" style="flex:1;overflow-y:auto"></div>
+      <div style="padding:8px;border-top:1px solid var(--border)">
+        <button class="btn-clear" style="width:100%" onclick="clearHistory()">
+          <i class="bi bi-trash3"></i> Limpiar historial
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main-area">
+    <!-- EDITOR -->
+    <div class="editor-pane" id="editorPane" style="height:260px">
+      <div class="editor-toolbar">
+        <i class="bi bi-code-slash" style="color:var(--accent)"></i>
+        <span>Python · Django ORM</span>
+        <div style="flex:1"></div>
+        <button class="btn-clear" onclick="clearEditor()"><i class="bi bi-eraser"></i> Limpiar</button>
+      </div>
+      <textarea id="codeEditor">{% autoescape off %}# Escribe tu código ORM aquí. Asigna el resultado a 'result' o
+# simplemente escribe la expresión al final (como en la shell de Python).
+#
+# Modelos disponibles: {{ models|length }} modelos cargados
+# Helpers: Q, F, Count, Sum, Avg, Max, Min, Case, When, Coalesce...
+#
+# Ejemplos:
+#   result = Product.objects.filter(price__gt=100)[:20]
+#   Product.objects.values('category__name').annotate(total=Count('id'))
+
+Product.objects.all()[:10]{% endautoescape %}</textarea>
+    </div>
+
+    <div class="resizer" id="resizer"></div>
+
+    <!-- RESULTS -->
+    <div class="results-pane">
+      <div class="results-toolbar">
+        <div class="status-badge">
+          <div class="status-dot" id="statusDot"></div>
+          <span id="statusText" style="color:var(--text-muted)">Listo para ejecutar</span>
+        </div>
+        <div class="tab-switcher" id="tabSwitcher" style="display:none">
+          <button class="tab-btn active" id="btnTabla" onclick="showTab('tabla')">
+            <i class="bi bi-table"></i> Tabla
+          </button>
+          <button class="tab-btn" id="btnJson" onclick="showTab('json')">
+            <i class="bi bi-braces"></i> JSON
+          </button>
+          <button class="tab-btn" id="btnSql" onclick="showTab('sql')">
+            <i class="bi bi-filetype-sql"></i> SQL
+          </button>
+        </div>
+      </div>
+      <div class="results-body" id="resultsBody">
+        <div class="empty-state">
+          <i class="bi bi-play-circle"></i>
+          <p>Ejecuta una query para ver los resultados aquí</p>
+          <p style="font-size:0.75rem;opacity:0.5">Ctrl + Enter para ejecutar</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
+
+<script>
+// ── CodeMirror ──────────────────────────────────────────────────────────────
+const editor = CodeMirror.fromTextArea(document.getElementById('codeEditor'), {
+  mode: 'python',
+  theme: 'dracula',
+  lineNumbers: true,
+  matchBrackets: true,
+  autoCloseBrackets: true,
+  styleActiveLine: true,
+  indentUnit: 4,
+  tabSize: 4,
+  indentWithTabs: false,
+  extraKeys: {
+    'Ctrl-Enter': executeCode,
+    'Cmd-Enter': executeCode,
+    'Tab': cm => cm.execCommand('insertSoftTab'),
+  }
+});
+
+// ── State ───────────────────────────────────────────────────────────────────
+let currentData = null;
+let currentTab = 'tabla';
+let dtInstance = null;
+
+// ── Execute ─────────────────────────────────────────────────────────────────
+function executeCode() {
+  const code = editor.getValue().trim();
+  if (!code) return;
+
+  setStatus('loading', 'Ejecutando...');
+  document.getElementById('runBtn').disabled = true;
+  document.getElementById('tabSwitcher').style.display = 'none';
+
+  fetch('/orm-tool/execute/', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code })
+  })
+  .then(r => r.json())
+  .then(data => {
+    currentData = data;
+    if (data.error) {
+      renderError(data.error);
+      setStatus('error', 'Error en la ejecución');
+    } else {
+      renderTable(data.columns, data.rows);
+      const timeStr = data.execution_time_ms + 'ms';
+      const countStr = data.count + (data.count === 1 ? ' fila' : ' filas');
+      setStatus('success', `${countStr} · ${timeStr}`);
+      document.getElementById('tabSwitcher').style.display = 'flex';
+      showTab('tabla');
+    }
+    addToHistory(code);
+  })
+  .catch(err => {
+    renderError('Error de red: ' + err.message);
+    setStatus('error', 'Error de red');
+  })
+  .finally(() => {
+    document.getElementById('runBtn').disabled = false;
+  });
+}
+
+// ── Render ──────────────────────────────────────────────────────────────────
+function renderTable(columns, rows) {
+  if (dtInstance) { dtInstance.destroy(); dtInstance = null; }
+
+  if (!columns.length) {
+    document.getElementById('resultsBody').innerHTML = `
+      <div class="empty-state">
+        <i class="bi bi-inbox"></i>
+        <p>La query no devolvió resultados</p>
+      </div>`;
+    return;
+  }
+
+  let html = '<table id="resultsTable" class="table table-sm table-bordered" style="width:100%"><thead><tr>';
+  columns.forEach(c => { html += `<th>${escHtml(c)}</th>`; });
+  html += '</tr></thead><tbody>';
+  rows.forEach(row => {
+    html += '<tr>';
+    row.forEach(cell => {
+      if (cell === null || cell === undefined) {
+        html += '<td class="null-val">NULL</td>';
+      } else {
+        html += `<td title="${escHtml(String(cell))}">${escHtml(String(cell))}</td>`;
+      }
+    });
+    html += '</tr>';
+  });
+  html += '</tbody></table>';
+
+  document.getElementById('resultsBody').innerHTML = html;
+
+  dtInstance = $('#resultsTable').DataTable({
+    pageLength: 25,
+    lengthMenu: [10, 25, 50, 100],
+    scrollX: true,
+    language: {
+      url: 'https://cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json'
+    },
+    dom: '<"d-flex justify-content-between align-items-center mb-2"lf>t<"d-flex justify-content-between align-items-center mt-2"ip>',
+  });
+}
+
+function renderError(msg) {
+  document.getElementById('resultsBody').innerHTML = `
+    <div class="error-view">
+      <div class="error-title"><i class="bi bi-exclamation-triangle-fill"></i> Error</div>${escHtml(msg)}
+    </div>`;
+}
+
+function showTab(tab) {
+  currentTab = tab;
+  ['tabla','json','sql'].forEach(t => {
+    document.getElementById('btn' + t.charAt(0).toUpperCase() + t.slice(1)).classList.toggle('active', t === tab);
+  });
+  if (!currentData) return;
+
+  if (tab === 'tabla') {
+    renderTable(currentData.columns, currentData.rows);
+  } else if (tab === 'json') {
+    const json = JSON.stringify(
+      currentData.rows.map(row => {
+        const obj = {};
+        currentData.columns.forEach((c, i) => obj[c] = row[i]);
+        return obj;
+      }),
+      null, 2
+    );
+    document.getElementById('resultsBody').innerHTML =
+      `<div class="json-view">${syntaxHighlightJson(json)}</div>`;
+  } else if (tab === 'sql') {
+    const sql = currentData.sql || '-- SQL no disponible (usa .values() o QuerySet directo)';
+    document.getElementById('resultsBody').innerHTML =
+      `<div class="sql-view">${escHtml(sql)}</div>`;
+  }
+}
+
+// ── Syntax highlight JSON ────────────────────────────────────────────────────
+function syntaxHighlightJson(json) {
+  return json.replace(
+    /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+    match => {
+      let cls = 'json-number';
+      if (/^"/.test(match)) {
+        cls = /:$/.test(match) ? 'json-key' : 'json-string';
+      } else if (/true|false/.test(match)) {
+        cls = 'json-bool';
+      } else if (/null/.test(match)) {
+        cls = 'json-null';
+      }
+      return `<span class="${cls}">${escHtml(match)}</span>`;
+    }
+  );
+}
+
+// ── Status ──────────────────────────────────────────────────────────────────
+function setStatus(type, text) {
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  dot.className = 'status-dot ' + type;
+  txt.textContent = text;
+  txt.style.color = type === 'success' ? 'var(--success)'
+                  : type === 'error' ? 'var(--danger)'
+                  : type === 'loading' ? 'var(--accent)'
+                  : 'var(--text-muted)';
+}
+
+// ── Sidebar models ──────────────────────────────────────────────────────────
+function toggleModel(header) {
+  if (event && event.target.closest('.snippet-btn')) return;
+  header.classList.toggle('open');
+  const fields = header.nextElementSibling;
+  fields.classList.toggle('open');
+}
+
+function insertSnippet(e, modelName) {
+  e.stopPropagation();
+  const snippet = `result = ${modelName}.objects.all()[:25]`;
+  editor.setValue(snippet);
+  editor.focus();
+  editor.setCursor(editor.lineCount(), 0);
+}
+
+function filterModels(query) {
+  const q = query.toLowerCase();
+  document.querySelectorAll('.model-item').forEach(item => {
+    item.style.display = item.dataset.model.includes(q) ? '' : 'none';
+  });
+}
+
+// ── Sidebar tabs ─────────────────────────────────────────────────────────────
+function switchSidebarTab(tab) {
+  document.getElementById('tabModels').classList.toggle('active', tab === 'models');
+  document.getElementById('tabHistory').classList.toggle('active', tab === 'history');
+  document.getElementById('panelModels').style.display = tab === 'models' ? 'flex' : 'none';
+  document.getElementById('panelModels').style.flexDirection = 'column';
+  document.getElementById('panelHistory').style.display = tab === 'history' ? 'flex' : 'none';
+  if (tab === 'history') renderHistory();
+}
+
+// ── History ──────────────────────────────────────────────────────────────────
+const HISTORY_KEY = 'orm_tool_history';
+
+function addToHistory(code) {
+  const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  const entry = { code, ts: new Date().toLocaleTimeString() };
+  const filtered = history.filter(h => h.code !== code);
+  filtered.unshift(entry);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(filtered.slice(0, 20)));
+}
+
+function renderHistory() {
+  const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  const el = document.getElementById('historyList');
+  if (!history.length) {
+    el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:0.8rem">Sin historial aún</div>';
+    return;
+  }
+  el.innerHTML = history.map((h, i) => `
+    <div class="history-item" onclick="loadHistory(${i})">
+      <div class="history-code">${escHtml(h.code.split('\n').find(l => l.trim() && !l.startsWith('#')) || h.code)}</div>
+      <div class="history-time">${h.ts}</div>
+    </div>
+  `).join('');
+}
+
+function loadHistory(idx) {
+  const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  if (history[idx]) {
+    editor.setValue(history[idx].code);
+    editor.focus();
+    switchSidebarTab('models');
+  }
+}
+
+function clearHistory() {
+  localStorage.removeItem(HISTORY_KEY);
+  renderHistory();
+}
+
+// ── Resizer ──────────────────────────────────────────────────────────────────
+(function() {
+  const resizer = document.getElementById('resizer');
+  const editorPane = document.getElementById('editorPane');
+  let dragging = false, startY = 0, startH = 0;
+
+  resizer.addEventListener('mousedown', e => {
+    dragging = true;
+    startY = e.clientY;
+    startH = editorPane.offsetHeight;
+    document.body.style.userSelect = 'none';
+  });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const newH = Math.max(100, Math.min(startH + e.clientY - startY, window.innerHeight - 200));
+    editorPane.style.height = newH + 'px';
+    editor.refresh();
+  });
+  document.addEventListener('mouseup', () => {
+    dragging = false;
+    document.body.style.userSelect = '';
+  });
+})();
+
+// ── Utilities ────────────────────────────────────────────────────────────────
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function clearEditor() {
+  editor.setValue('');
+  editor.focus();
+}
+
+// Init
+editor.focus();
+</script>
+</body>
+</html>
