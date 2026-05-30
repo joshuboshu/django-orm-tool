@@ -96,17 +96,26 @@
       display: flex;
       height: calc(100vh - var(--header-h));
       margin-top: var(--header-h);
+      overflow: hidden;
     }
 
     /* SIDEBAR */
     .sidebar {
       width: var(--sidebar-w);
       min-width: var(--sidebar-w);
+      height: 100%;
       background: var(--surface);
       border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
       overflow: hidden;
+    }
+    #panelHistory {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      overflow: hidden;
+      min-height: 0;
     }
     .sidebar-tabs {
       display: flex;
@@ -302,52 +311,87 @@
 
     .results-body { flex: 1; overflow: auto; padding: 12px; }
 
-    /* DataTable dark theme overrides */
-    .dataTables_wrapper { color: var(--text); font-size: 0.82rem; }
+    /* DataTable dark theme — overrides totales */
+    .dataTables_wrapper,
+    .dataTables_wrapper label,
+    .dataTables_wrapper span {
+      color: var(--text) !important;
+      font-size: 0.82rem;
+    }
     .dataTables_wrapper .dataTables_filter input,
     .dataTables_wrapper .dataTables_length select {
-      background: var(--bg); border: 1px solid var(--border);
-      color: var(--text); border-radius: 4px; padding: 3px 6px;
+      background: var(--surface) !important;
+      border: 1px solid var(--border) !important;
+      color: var(--text) !important;
+      border-radius: 4px;
+      padding: 3px 8px;
+      outline: none;
     }
-    .dataTables_wrapper .dataTables_info,
-    .dataTables_wrapper .dataTables_paginate { color: var(--text-muted); font-size: 0.75rem; }
-    table.dataTable { border-collapse: collapse !important; }
-    table.dataTable thead th {
-      background: #1c2028;
-      color: var(--text-muted);
-      border-bottom: 1px solid var(--border) !important;
+    .dataTables_wrapper .dataTables_filter input:focus,
+    .dataTables_wrapper .dataTables_length select:focus {
+      border-color: var(--accent) !important;
+    }
+    .dataTables_wrapper .dataTables_info { color: var(--text-muted) !important; font-size: 0.75rem; }
+    table.dataTable { border-collapse: collapse !important; width: 100% !important; }
+    table.dataTable thead tr { background: #161a1f !important; }
+    table.dataTable thead th,
+    table.dataTable thead td {
+      background: #161a1f !important;
+      color: #a0aab4 !important;
+      border-bottom: 2px solid var(--border) !important;
+      border-top: none !important;
       font-weight: 600;
       font-size: 0.78rem;
       white-space: nowrap;
-      padding: 8px 10px;
+      padding: 9px 12px !important;
+      letter-spacing: 0.03em;
     }
-    table.dataTable tbody tr { background: transparent !important; }
-    table.dataTable tbody tr:hover td { background: #ffffff06 !important; }
+    table.dataTable thead th.sorting:before,
+    table.dataTable thead th.sorting:after,
+    table.dataTable thead th.sorting_asc:after,
+    table.dataTable thead th.sorting_desc:after { opacity: 0.4; }
+    table.dataTable tbody tr { background: var(--surface) !important; }
+    table.dataTable tbody tr:nth-child(even) { background: #1e2229 !important; }
+    table.dataTable tbody tr:hover td { background: #2a2f38 !important; }
     table.dataTable tbody td {
-      border-color: var(--border) !important;
-      padding: 6px 10px;
+      background: transparent !important;
+      border: none !important;
+      border-bottom: 1px solid var(--border) !important;
+      padding: 7px 12px !important;
       font-size: 0.8rem;
       font-family: 'JetBrains Mono', 'Consolas', monospace;
-      color: var(--text);
+      color: #d4dae3 !important;
       white-space: nowrap;
-      max-width: 280px;
+      max-width: 300px;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    td.null-val { color: #6e82a6; font-style: italic; }
+    td.null-val { color: #5a6478 !important; font-style: italic; }
+    .dataTables_paginate { padding-top: 4px; }
     .dataTables_paginate .paginate_button {
       color: var(--text-muted) !important;
-      border: none !important;
+      border: 1px solid transparent !important;
       background: none !important;
-      border-radius: 4px !important;
+      border-radius: 5px !important;
+      padding: 3px 9px !important;
+      margin: 0 1px !important;
+      font-size: 0.78rem;
     }
-    .dataTables_paginate .paginate_button.current {
-      background: var(--accent)22 !important;
-      color: var(--accent) !important;
+    .dataTables_paginate .paginate_button.current,
+    .dataTables_paginate .paginate_button.current:hover {
+      background: var(--accent) !important;
+      border-color: var(--accent) !important;
+      color: #fff !important;
     }
     .dataTables_paginate .paginate_button:hover {
-      background: #ffffff10 !important;
+      background: #2a2f38 !important;
+      border-color: var(--border) !important;
       color: var(--text) !important;
+    }
+    .dataTables_paginate .paginate_button.disabled,
+    .dataTables_paginate .paginate_button.disabled:hover {
+      color: #3a3f47 !important;
+      cursor: default;
     }
 
     /* JSON view */
@@ -481,7 +525,7 @@
       </div>
     </div>
 
-    <div id="panelHistory" style="display:none;flex:1;overflow:hidden;display:flex;flex-direction:column">
+    <div id="panelHistory">
       <div class="sidebar-content" id="historyList" style="flex:1;overflow-y:auto"></div>
       <div style="padding:8px;border-top:1px solid var(--border)">
         <button class="btn-clear" style="width:100%" onclick="clearHistory()">
@@ -602,7 +646,6 @@ function executeCode() {
       renderError(data.error);
       setStatus('error', 'Error en la ejecución');
     } else {
-      renderTable(data.columns, data.rows);
       const timeStr = data.execution_time_ms + 'ms';
       const countStr = data.count + (data.count === 1 ? ' fila' : ' filas');
       setStatus('success', `${countStr} · ${timeStr}`);
@@ -656,7 +699,14 @@ function renderTable(columns, rows) {
     lengthMenu: [10, 25, 50, 100],
     scrollX: true,
     language: {
-      url: 'https://cdn.datatables.net/plug-ins/1.13.8/i18n/es-ES.json'
+      search: 'Buscar:',
+      lengthMenu: 'Mostrar _MENU_ registros',
+      info: 'Mostrando _START_ a _END_ de _TOTAL_ registros',
+      infoEmpty: 'Mostrando 0 registros',
+      infoFiltered: '(filtrado de _MAX_ registros)',
+      paginate: { first: 'Primero', last: 'Último', next: 'Siguiente', previous: 'Anterior' },
+      zeroRecords: 'No se encontraron resultados',
+      emptyTable: 'Sin datos disponibles',
     },
     dom: '<"d-flex justify-content-between align-items-center mb-2"lf>t<"d-flex justify-content-between align-items-center mt-2"ip>',
   });
@@ -754,7 +804,6 @@ function switchSidebarTab(tab) {
   document.getElementById('tabModels').classList.toggle('active', tab === 'models');
   document.getElementById('tabHistory').classList.toggle('active', tab === 'history');
   document.getElementById('panelModels').style.display = tab === 'models' ? 'flex' : 'none';
-  document.getElementById('panelModels').style.flexDirection = 'column';
   document.getElementById('panelHistory').style.display = tab === 'history' ? 'flex' : 'none';
   if (tab === 'history') renderHistory();
 }
