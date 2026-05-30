@@ -14,7 +14,7 @@ Clona el repo y copia **solo la carpeta `orm_tool`** a la raíz de tu proyecto D
 
 ```bash
 # Desde la raíz de tu proyecto Django
-git clone https://github.com/tu-usuario/django-orm-tool.git
+git clone https://github.com/joshuboshu/django-orm-tool.git
 cp -r django-orm-tool/orm_tool ./orm_tool
 ```
 
