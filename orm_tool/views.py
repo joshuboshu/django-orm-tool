@@ -29,8 +29,7 @@ def _get_model_info():
 
 def index(request):
     models = _get_model_info()
-    models_json = json.dumps({m['name']: m['fields'] for m in models})
-    return render(request, 'orm_tool/index.html', {'models': models, 'models_json': models_json})
+    return render(request, 'orm_tool/index.html', {'models': models})
 
 
 @csrf_exempt

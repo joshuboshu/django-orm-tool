@@ -13,7 +13,6 @@
   <!-- CodeMirror -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css" rel="stylesheet">
-  <link href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.css" rel="stylesheet">
   <!-- DataTables -->
   <link href="https://cdn.datatables.net/1.13.8/css/dataTables.bootstrap5.min.css" rel="stylesheet">
 
@@ -656,38 +655,6 @@
       background: var(--accent);
     }
 
-    /* CodeMirror hint dark theme */
-    .CodeMirror-hints {
-      background: #1c2028 !important;
-      border: 1px solid var(--border) !important;
-      border-radius: 6px !important;
-      box-shadow: 0 4px 16px #00000055 !important;
-      font-family: 'JetBrains Mono', 'Consolas', monospace !important;
-      font-size: 0.8rem !important;
-      z-index: 9999 !important;
-      max-height: 220px !important;
-      overflow-y: auto !important;
-    }
-    .CodeMirror-hint {
-      color: var(--text) !important;
-      padding: 4px 12px !important;
-      border-radius: 3px !important;
-    }
-    .CodeMirror-hint-active {
-      background: var(--accent) !important;
-      color: #fff !important;
-    }
-
-    /* field-row clickeable */
-    .field-row {
-      cursor: pointer;
-    }
-    .field-row:hover {
-      background: #ffffff0a;
-    }
-    .field-row:hover .field-name {
-      color: var(--accent);
-    }
   </style>
 </head>
 
@@ -735,9 +702,9 @@
             </div>
             <div class="model-fields">
               {% for field in model.fields %}
-              <div class="field-row" onclick="insertField('{{ field.name }}')" title="Insertar campo">
+              <div class="field-row">
                 <i class="bi bi-dash" style="font-size:0.6rem;color:#6e82a6"></i>
-                <span class="field-name">{{ field.name }}</span>
+                <span>{{ field.name }}</span>
                 <span class="field-type">{{ field.type }}</span>
               </div>
               {% endfor %}
@@ -799,9 +766,6 @@ Product.objects.all()[:10]{% endautoescape %}</textarea>
             <button class="tab-btn" id="btnSql" onclick="showTab('sql')">
               <i class="bi bi-filetype-sql"></i> SQL
             </button>
-            <button class="tab-btn" id="btnCsv" onclick="exportCsv()" title="Descargar CSV">
-              <i class="bi bi-download"></i> CSV
-            </button>
           </div>
         </div>
         <div class="results-body" id="resultsBody">
@@ -823,15 +787,10 @@ Product.objects.all()[:10]{% endautoescape %}</textarea>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchbrackets.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/selection/active-line.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/hint/show-hint.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.8/js/jquery.dataTables.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.8/js/dataTables.bootstrap5.min.js"></script>
 
   <script>
-  // ── Model data from Django (for autocomplete) ──────────────────────────────
-  const MODEL_FIELDS = {{ models_json|safe }};
-  // { "Product": [{name:"price", type:"DecimalField"}, ...], "User": [...], ... }
-  const MODEL_NAMES = Object.keys(MODEL_FIELDS);
     // ── CodeMirror ──────────────────────────────────────────────────────────────
     const editor = CodeMirror.fromTextArea(document.getElementById('codeEditor'), {
       mode: 'python',
@@ -846,161 +805,14 @@ Product.objects.all()[:10]{% endautoescape %}</textarea>
       extraKeys: {
         'Ctrl-Enter': executeCode,
         'Cmd-Enter': executeCode,
-        'Ctrl-Space': cm => cm.showHint({ hint: djangoOrmHint, completeSingle: false }),
         'Tab': cm => cm.execCommand('insertSoftTab'),
       },
-      hintOptions: { hint: djangoOrmHint, completeSingle: false },
-    });
-
-    // Auto-trigger hint on '.' and '_'
-    editor.on('inputRead', (cm, change) => {
-      if (change.text[0] === '.' || change.text[0] === '_') {
-        cm.showHint({ hint: djangoOrmHint, completeSingle: false });
-      }
     });
 
     // ── State ───────────────────────────────────────────────────────────────────
     let currentData = null;
     let currentTab = 'tabla';
     let dtInstance = null;
-
-    // ── Autocomplete ─────────────────────────────────────────────────────────────
-    const QS_METHODS = [
-      'filter(', 'exclude(', 'all()', 'values(', 'values_list(',
-      'annotate(', 'aggregate(', 'order_by(', 'select_related(',
-      'prefetch_related(', 'get(', 'first()', 'last()', 'count()',
-      'exists()', 'distinct()', 'none()', 'defer(', 'only(',
-      'update(', 'delete()', 'create(', 'get_or_create(',
-      'update_or_create(', 'bulk_create(', 'in_bulk(', 'iterator()',
-      'using(', 'raw(', 'dates(', 'datetimes(', 'union(', 'intersection(',
-    ];
-    const LOOKUPS = [
-      'exact', 'iexact', 'contains', 'icontains',
-      'startswith', 'istartswith', 'endswith', 'iendswith',
-      'in', 'gt', 'gte', 'lt', 'lte',
-      'isnull', 'regex', 'iregex',
-      'date', 'year', 'iso_year', 'month', 'day', 'week',
-      'week_day', 'quarter', 'time', 'hour', 'minute', 'second',
-      'range',
-    ];
-    const HELPERS = [
-      'Q(', 'F(', 'Count(', 'Sum(', 'Avg(', 'Max(', 'Min(',
-      'Value(', 'Case(', 'When(', 'Coalesce(', 'Concat(',
-      'Lower(', 'Upper(', 'Length(', 'Now()',
-      'TruncDate(', 'TruncMonth(', 'TruncYear(',
-      'Subquery(', 'OuterRef(', 'Exists(', 'Prefetch(',
-    ];
-
-    function _getActiveModel(cm, cursor) {
-      // Search backwards from cursor for the last "ModelName.objects" pattern
-      for (let ln = cursor.line; ln >= Math.max(0, cursor.line - 10); ln--) {
-        const line = cm.getLine(ln);
-        const text = ln === cursor.line ? line.slice(0, cursor.ch) : line;
-        const m = text.match(/(\w+)\.objects/g);
-        if (m) {
-          const lastMatch = m[m.length - 1].replace('.objects', '');
-          if (MODEL_FIELDS[lastMatch]) return lastMatch;
-        }
-      }
-      return null;
-    }
-
-    function _fieldsOf(modelName) {
-      if (!modelName || !MODEL_FIELDS[modelName]) return [];
-      return MODEL_FIELDS[modelName].map(f => f.name);
-    }
-
-    function _filterList(list, prefix) {
-      return prefix
-        ? list.filter(s => s.toLowerCase().startsWith(prefix.toLowerCase()))
-        : list;
-    }
-
-    function djangoOrmHint(cm) {
-      const cursor = cm.getCursor();
-      const line = cm.getLine(cursor.line);
-      const before = line.slice(0, cursor.ch);
-
-      // ── Case 1: after "ModelName." (not ".objects.")
-      const modelDot = before.match(/(\w+)\.$/);
-      if (modelDot && MODEL_FIELDS[modelDot[1]]) {
-        return {
-          list: ['objects'],
-          from: CodeMirror.Pos(cursor.line, cursor.ch),
-          to:   CodeMirror.Pos(cursor.line, cursor.ch),
-        };
-      }
-
-      // ── Case 2: after ".objects."
-      if (before.match(/\.objects\.$/)) {
-        return {
-          list: QS_METHODS,
-          from: CodeMirror.Pos(cursor.line, cursor.ch),
-          to:   CodeMirror.Pos(cursor.line, cursor.ch),
-        };
-      }
-
-      // ── Case 3: inside field lookup (fieldName__ or fieldName__partial)
-      const lookupMatch = before.match(/(\w+)__(\w*)$/);
-      if (lookupMatch) {
-        const partial = lookupMatch[2];
-        const list = _filterList(LOOKUPS, partial);
-        return {
-          list,
-          from: CodeMirror.Pos(cursor.line, cursor.ch - partial.length),
-          to:   CodeMirror.Pos(cursor.line, cursor.ch),
-        };
-      }
-
-      // ── Case 4: inside .filter( .exclude( .get( .order_by( .values( etc.
-      // Suggest field names of the active model
-      const inMethodMatch = before.match(/\.(filter|exclude|get|order_by|values|values_list|select_related|prefetch_related|defer|only|annotate|aggregate)\([^)]*?(\w*)$/);
-      if (inMethodMatch) {
-        const partial = inMethodMatch[2];
-        const model = _getActiveModel(cm, cursor);
-        const fields = _fieldsOf(model);
-        const list = _filterList(fields, partial);
-        return list.length ? {
-          list,
-          from: CodeMirror.Pos(cursor.line, cursor.ch - partial.length),
-          to:   CodeMirror.Pos(cursor.line, cursor.ch),
-        } : null;
-      }
-
-      // ── Case 5: general token — suggest model names + helpers
-      const token = cm.getTokenAt(cursor);
-      const word = token.string.trim();
-      const start = token.start;
-      const combined = [...MODEL_NAMES, ...HELPERS];
-      const list = _filterList(combined, word);
-      if (!list.length) return null;
-      return {
-        list,
-        from: CodeMirror.Pos(cursor.line, start),
-        to:   CodeMirror.Pos(cursor.line, cursor.ch),
-      };
-    }
-
-    // ── Export CSV ────────────────────────────────────────────────────────────────
-    function exportCsv() {
-      if (!currentData || !currentData.columns.length) return;
-      const rows = [currentData.columns, ...currentData.rows];
-      const csv = rows.map(r =>
-        r.map(v => '"' + String(v ?? '').replace(/"/g, '""') + '"').join(',')
-      ).join('\n');
-      const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'orm_query_' + Date.now() + '.csv';
-      a.click();
-      URL.revokeObjectURL(a.href);
-    }
-
-    // ── Insert field from sidebar ─────────────────────────────────────────────────
-    function insertField(fieldName) {
-      editor.replaceSelection(fieldName);
-      editor.focus();
-    }
 
     // ── Execute ─────────────────────────────────────────────────────────────────
     function executeCode() {
